@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ワイルズのヘイトのしくみ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  /* single dark look; colors taken from the official Wilds site palette */
+  color-scheme:dark;
+  --ground:#0A0800; --surface:#1F1802; --ink:#FCF5DE; --text:#DCDCDC; --muted:#B1A695;
+  --line:#453F32; --line-strong:#8C8471;
+  --up:#FF7200; --up-soft:#574610; --down:#DDDC4A; --down-soft:#3A3A0E; --track:#2A241A;
+  --display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
+}
+
+*{box-sizing:border-box}
+body{background:linear-gradient(0deg,#0A0800,#1A1402 60%,#0A0800) fixed,var(--ground);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.85;
+  padding-inline:16px;padding-block:40px 72px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{color:var(--ink)}
+b{color:var(--ink)}
+h1,h2{font-family:var(--display);font-weight:900;text-wrap:balance;margin:0;letter-spacing:.01em}
+h1{font-size:clamp(30px,6vw,44px);line-height:1.25}
+h2{font-size:24px;line-height:1.4}
+h3{font-size:17px;font-weight:700;margin:0}
+p{margin:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+section{display:flex;flex-direction:column;gap:20px}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+.lead{font-size:17px;max-width:40em}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* header */
+header{display:flex;flex-direction:column;gap:18px;border-bottom:2px solid var(--line-strong);padding-bottom:28px}
+.scope{font-size:14px;color:var(--muted);max-width:44em}
+
+/* summary */
+.summary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+.summary li{display:grid;grid-template-columns:7em 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.summary .lab{font-size:16px;font-weight:700;color:var(--ink)}
+@media (max-width:480px){.summary li{grid-template-columns:1fr;gap:2px}}
+
+/* distance ruler */
+.ruler{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.band{padding:12px 10px;border-radius:4px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.band .m{font-size:12px;color:var(--muted)}
+.band .v{font-family:var(--mono);font-weight:600;font-size:17px}
+.band.b1{background:#574610} .band.b2{background:#493D22}
+.band.b3{background:#423C2F} .band.b4{background:var(--surface)}
+.band.out{background:var(--down-soft)}
+.band.b1 .v,.band.b2 .v,.band.b3 .v,.band.b4 .v{color:var(--up)} .band.out .v{color:var(--down)}
+@media (max-width:520px){.ruler{grid-template-columns:repeat(2,1fr)} .band.out{grid-column:span 2}}
+
+.formula{background:linear-gradient(0deg,rgba(52,39,1,.8),rgba(10,8,0,.8));border:1px solid var(--line);border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+.formula .eq{font-size:18px;font-weight:700}
+.compare{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.compare div{border-top:3px solid var(--up);padding-top:10px;display:flex;flex-direction:column;gap:2px}
+.compare .big{font-family:var(--mono);font-weight:600;font-size:22px;color:var(--up)}
+.compare .s{font-size:13px;color:var(--muted)}
+@media (max-width:560px){.compare{grid-template-columns:1fr}}
+
+/* tables */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.04em}
+td.res{white-space:nowrap;font-weight:700}
+
+/* tips */
+.tips{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 32px}
+.tips div{display:flex;flex-direction:column;gap:6px}
+@media (max-width:600px){.tips{grid-template-columns:1fr}}
+
+.callout{border-left:3px solid var(--down);padding:4px 0 4px 16px;font-size:15px}
+/* column */
+.column{border-top:2px solid var(--line-strong);border-bottom:2px solid var(--line-strong);
+  background:linear-gradient(0deg,rgba(52,39,1,.8),rgba(10,8,0,.8));padding:28px 24px;display:flex;flex-direction:column;gap:16px}
+.column .kick{font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--muted)}
+.column dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:10px 20px;align-items:baseline}
+.column dt{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--up);white-space:nowrap}
+.column dd{margin:0}
+@media (max-width:480px){.column{padding:22px 16px}.column dl{grid-template-columns:1fr;gap:2px}.column dd{margin-bottom:10px}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <h1>モンスターは<br>誰を狙っているのか</h1>
+  <p class="lead">モンハンワイルズで、モンスターが誰を狙うかを決める「ヘイト」の仕組み。</p>
+  <p class="scope">オメガ・プラネテスとジン・ダハドは扱いません。</p>
+</header>
+
+<section aria-labelledby="s-sum">
+  <h2 id="s-sum">まずはこれだけ</h2>
+  <ul class="summary">
+    <li><b class="lab">狙われるのは</b><span>ヘイト値（0〜100）が<b>いちばん高い人</b>。ヘイト値はハンター・オトモ・サポートハンターが別々に持っている</span></li>
+    <li><b class="lab up">上がる</b><span>近くで戦う／ダメージを与える／<b>狩猟笛で演奏する</b></span></li>
+    <li><b class="lab down">下がる</b><span>モンスターが技を出したとき。<b>当たらなくても</b>、狙われている人が下がる</span></li>
+    <li><b class="lab down">被弾で半減</b><span>狙われている人が被弾すると、<b>その時点のヘイト値が半分</b>になる（80なら40に）。<b>ガード・相殺・耳栓で防いでも</b>同じ。無敵時間でかわせば減らない</span></li>
+    <li><b class="lab">狙いが変わる</b><span>技の区切りでだけ決め直す。<b>連続攻撃の間は変わらず</b>、終わった直後に移りやすい</span></li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-base">
+  <h2 id="s-base">ヘイト値の基本</h2>
+  <ul>
+    <li>モンスター1体ごとに、全員が別々のヘイト値（<span class="num">0〜100</span>）を持つ。<span class="num">100</span>より上にはならない</li>
+    <li>上がりやすさは立場で違い、プレイヤーが一番上がりやすい。オトモやサポートハンターは控えめ</li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-up">
+  <h2 id="s-up"><span class="up">上がる</span>こと</h2>
+
+  <h3>近くにいる</h3>
+  <p>戦闘中、モンスターとの距離に応じて1秒ごとに増減します。張り付いて戦っているだけで、どんどん上がります。</p>
+  <div class="ruler" role="list">
+    <div class="band b1" role="listitem"><span class="m">0〜10m</span><span class="v">+0.8</span></div>
+    <div class="band b2" role="listitem"><span class="m">10〜20m</span><span class="v">+0.5</span></div>
+    <div class="band b3" role="listitem"><span class="m">20〜30m</span><span class="v">+0.3</span></div>
+    <div class="band b4" role="listitem"><span class="m">30〜40m</span><span class="v">+0.1</span></div>
+    <div class="band out" role="listitem"><span class="m">40mより遠い</span><span class="v">−1</span></div>
+  </div>
+  <p class="muted" style="font-size:14px">1秒あたりの値。エリアの外にいると <span class="num">−3</span>／秒。</p>
+
+  <h3>ダメージを与える</h3>
+  <div class="formula">
+    <span class="eq">上がる量 ＝ 与えたダメージ ÷ モンスターの最大体力 × <span class="num">400</span></span>
+    <span class="muted">例：体力7万のモンスターに1000ダメージ → 約 <span class="num">+5.7</span>。最大体力の1%分で <span class="num">+4</span> と覚えておくと分かりやすい。</span>
+  </div>
+
+  <h3>狩猟笛の演奏</h3>
+  <p>演奏1回ごとに <b class="num up">+8</b>。旋律を3回吹いて重ね掛けすれば、<span class="num">+8</span>が4回で <b class="num up">+32</b>。50m以内のモンスター全員に効き、攻撃を当てる必要もありません。</p>
+  <div class="compare">
+    <div><span class="big">+8</span><span>演奏1回</span></div>
+    <div><span class="big">≒ 2%</span><span>最大体力の2%分のダメージと同じ</span><span class="s">歴戦王の体力だと1発ではまず届かない</span></div>
+    <div><span class="big">≒ 10秒</span><span>10m以内に張り付く10秒分</span></div>
+  </div>
+  <p class="callout">ただし上限は<span class="num">100</span>。全員が<span class="num">100</span>に張り付いた後はいくら足しても差はつきません。演奏が効くのは、大技や被弾で下がったヘイトを最短で戻すときです。</p>
+</section>
+
+<section aria-labelledby="s-down">
+  <h2 id="s-down"><span class="down">下がる</span>こと</h2>
+
+  <h3>モンスターが技を出す</h3>
+  <p>技を出した瞬間に、<b>そのとき狙われている人</b>のヘイト値が下がります。<b>当たっても外れても下がります。</b>この減り方がとても大きいので、同じ人がずっと狙われ続けることはまずありません。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>技の種類（アルシュベルドの例）</th><th>下がる量</th></tr></thead>
+      <tbody>
+        <tr><td>一部の大技</td><td class="res num down">−50</td></tr>
+        <tr><td>大きめの技</td><td class="res num down">−20〜35</td></tr>
+        <tr><td>軽い攻撃</td><td class="res num down">−5〜10</td></tr>
+        <tr><td>移動・旋回・咆哮</td><td class="res num">0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>狙われている人に攻撃が当たる</h3>
+  <p>狙われている人に攻撃が当たると、<b>その時点のヘイト値そのものが半分</b>になります。80なら40、40なら20です。巻き込まれて当たった、狙われていない人は減りません。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>受け方</th><th>減る？</th></tr></thead>
+      <tbody>
+        <tr><td>普通に被弾</td><td class="res down">減る</td></tr>
+        <tr><td>ガード</td><td class="res down">減る</td></tr>
+        <tr><td>ジャストガード</td><td class="res down">減る</td></tr>
+        <tr><td>咆哮を耳栓で防ぐ</td><td class="res down">減る</td></tr>
+        <tr><td>相殺</td><td class="res down">減る</td></tr>
+        <tr><td>フレーム回避（無敵時間でかわす）</td><td class="res">減らない</td></tr>
+        <tr><td>双剣や弓の回避</td><td class="res">減らない</td></tr>
+        <tr><td>太刀の見切り斬り・居合抜刀気刃斬り（成功時）</td><td class="res">減らない</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="callout">「攻撃を受け止める」のは被弾と同じ扱い、「すり抜ける」のはノーカウント、と考えると分かりやすいです。</p>
+
+  <h3>減る割合はモンスターで違う</h3>
+  <p>大型モンスターは基本的に<b>半分に減る</b>（80→40）。<b>ラギアクルスだけは4分の1しか減らない</b>（80→60）。大型でこうなっているのはラギアクルスだけで、理由は不明です。</p>
+</section>
+
+<section aria-labelledby="s-when">
+  <h2 id="s-when">狙う相手を決め直すタイミング</h2>
+  <ul>
+    <li>ヘイト値が逆転しても、<b>すぐにはターゲットは変わらない</b></li>
+    <li>決め直すのは、モンスターが次の行動を選ぶときだけ</li>
+    <li>連続攻撃の間は、途中でヘイト値が下がっても最初の相手を狙い続ける</li>
+    <li>連続攻撃や大技が終わったとき、それまでに下がった分がまとめて効いて、ターゲットが移りやすい</li>
+  </ul>
+</section>
+
+<section aria-labelledby="s-tips">
+  <h2 id="s-tips">立ち回りのヒント</h2>
+  <div class="tips">
+    <div><h3>タゲを引き受けたいなら回避</h3><p>ガードや相殺で受けるたびに、ヘイト値が半分に減る。無敵時間でかわせば下がらない。</p></div>
+    <div><h3>ヘビィボウガンはガードでタゲを手放せる</h3><p>位置取りで避けるより、ガードで受けたほうが早くタゲが外れる。</p></div>
+    <div><h3>演奏の後は狙われやすい</h3><p>一度に大きく上がるので、演奏が終わって決め直しが来ると狙われやすい。</p></div>
+    <div><h3>砥石では上がらない</h3><p>アイテムを使うこと自体では、ヘイトは上がりも下がりもしない。回復薬も同じ。</p></div>
+    <div><h3>セクレトに乗ると上がりにくい</h3><p>距離による上昇は0.3倍。乗ったままの攻撃や演奏では上がらない。</p></div>
+  </div>
+</section>
+
+
+<aside class="column" aria-labelledby="s-gore">
+  <span class="kick">COLUMN</span>
+  <h2 id="s-gore">ゴア・マガラは「狂竜症の人」を狙う</h2>
+  <p>ゴア・マガラには、ほかのモンスターにはない独自のヘイト処理があります。</p>
+  <dl>
+    <dt>+50</dt><dd>狂竜化（翼脚を広げる形態変化）のときにまき散らす鱗粉に触れると、そのハンターのヘイト値が一気に50上がる</dd>
+    <dt>100</dt><dd>狂竜症にかかったハンターを見つけると、その人のヘイト値を上限の100に張り付ける</dd>
+    <dt>約20秒</dt><dd>張り付けはしばらく続く。そのあいだ技を出しても被弾しても、ヘイト値はすぐ100に戻る</dd>
+  </dl>
+  <p class="callout">狂竜症にかかると、しばらくのあいだ集中して狙われるということです。狙われたくなければ、早めに狂竜症を克服するのが一番の対策です。</p>
+</aside>
+
+</div>
+</body>
+</html>
